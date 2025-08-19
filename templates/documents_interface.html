@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documents RAG - Dashboard Malaysia</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #64748b;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --danger-color: #dc2626;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-light: #e2e8f0;
+            --border-color: #334155;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+        }
+
+        .document-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .document-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            background: rgba(37, 99, 235, 0.05);
+            transition: all 0.3s ease;
+            min-height: 200px;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .file-type-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-right: 1rem;
+        }
+
+        .file-pdf { background: #dc3545; color: white; }
+        .file-docx { background: #2b579a; color: white; }
+        .file-txt { background: #6c757d; color: white; }
+        .file-xlsx { background: #217346; color: white; }
+        .file-csv { background: #f1c40f; color: black; }
+        .file-json { background: #fd7e14; color: white; }
+        .file-md { background: #563d7c; color: white; }
+
+        .processing-indicator {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--primary-color);
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, var(--bg-card) 0%, #2d3748 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        .upload-preview {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .document-actions {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .document-card:hover .document-actions {
+            opacity: 1;
+        }
+
+        .alert-dark {
+            background: var(--bg-card);
+            border-color: var(--border-color);
+            color: var(--text-light);
+        }
+
+        .btn-outline-light:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .form-control, .form-select {
+            background: var(--bg-dark);
+            border-color: var(--border-color);
+            color: var(--text-light);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: var(--bg-dark);
+            border-color: var(--primary-color);
+            color: var(--text-light);
+            box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h1 class="h3 mb-2">
+                    <i class="bi bi-file-earmark-text text-primary"></i>
+                    Gestion Documents RAG
+                </h1>
+                <p class="text-muted">
+                    Alimentez la base de connaissances avec vos documents PDF, Word, Excel, CSV, etc.
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-outline-light me-2" onclick="loadDocumentsStats()">
+                    <i class="bi bi-arrow-clockwise"></i> Actualiser
+                </button>
+                <button class="btn btn-primary" onclick="processAllDocuments()">
+                    <i class="bi bi-gear"></i> Traiter Tout
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card p-3 text-center">
+                    <div class="h4 text-primary mb-1" id="total-documents">-</div>
+                    <small class="text-muted">Documents Traités</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card p-3 text-center">
+                    <div class="h4 text-success mb-1" id="total-chunks">-</div>
+                    <small class="text-muted">Chunks dans RAG</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card p-3 text-center">
+                    <div class="h4 text-warning mb-1" id="avg-chunks">-</div>
+                    <small class="text-muted">Chunks/Document</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card p-3 text-center">
+                    <div class="h4 text-info mb-1" id="recent-docs">-</div>
+                    <small class="text-muted">Cette Semaine</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Zone d'Upload -->
+            <div class="col-md-6">
+                <div class="document-card p-4 mb-4">
+                    <h5 class="mb-3">
+                        <i class="bi bi-cloud-upload"></i> Ajouter Documents
+                    </h5>
+                    
+                    <!-- Zone de Drag & Drop -->
+                    <div class="upload-zone d-flex flex-column align-items-center justify-content-center p-4"
+                         onclick="document.getElementById('file-input').click()"
+                         ondrop="handleDrop(event)" 
+                         ondragover="handleDragOver(event)"
+                         ondragleave="handleDragLeave(event)">
+                        
+                        <i class="bi bi-cloud-upload fs-1 text-primary mb-3"></i>
+                        <h6 class="mb-2">Glissez vos fichiers ici</h6>
+                        <p class="text-muted mb-3">ou cliquez pour sélectionner</p>
+                        
+                        <input type="file" id="file-input" multiple accept=".pdf,.docx,.doc,.txt,.md,.csv,.xlsx,.xls,.json" 
+                               style="display: none;" onchange="handleFileSelect(event)">
+                        
+                        <small class="text-muted">
+                            Formats supportés: PDF, Word, Excel, CSV, TXT, MD, JSON
+                        </small>
+                    </div>
+
+                    <!-- Aperçu des fichiers sélectionnés -->
+                    <div id="upload-preview" class="upload-preview mt-3" style="display: none;">
+                        <h6 class="mb-2">Fichiers sélectionnés:</h6>
+                        <div id="file-list"></div>
+                        <div class="mt-3">
+                            <button class="btn btn-primary" onclick="uploadSelectedFiles()">
+                                <i class="bi bi-upload"></i> Télécharger et Traiter
+                            </button>
+                            <button class="btn btn-outline-secondary ms-2" onclick="clearFileSelection()">
+                                <i class="bi bi-x"></i> Annuler
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Types de fichiers supportés -->
+                <div class="document-card p-4">
+                    <h6 class="mb-3">
+                        <i class="bi bi-info-circle"></i> Types Supportés
+                    </h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="file-type-icon file-pdf">PDF</div>
+                                <div>
+                                    <small class="d-block">Documents PDF</small>
+                                    <small class="text-muted">Rapports, guides, manuels</small>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="file-type-icon file-docx">DOC</div>
+                                <div>
+                                    <small class="d-block">Documents Word</small>
+                                    <small class="text-muted">Spécifications, notes</small>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="file-type-icon file-xlsx">XLS</div>
+                                <div>
+                                    <small class="d-block">Tableurs Excel</small>
+                                    <small class="text-muted">Données de référence</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="file-type-icon file-csv">CSV</div>
+                                <div>
+                                    <small class="d-block">Données CSV</small>
+                                    <small class="text-muted">Datasets, exports</small>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="file-type-icon file-txt">TXT</div>
+                                <div>
+                                    <small class="d-block">Fichiers texte</small>
+                                    <small class="text-muted">Logs, configurations</small>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="file-type-icon file-json">JSON</div>
+                                <div>
+                                    <small class="d-block">Données JSON</small>
+                                    <small class="text-muted">APIs, configs</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Liste des documents traités -->
+            <div class="col-md-6">
+                <div class="document-card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ul"></i> Documents Traités
+                        </h5>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown">
+                                <i class="bi bi-filter"></i> Filtrer
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-dark">
+                                <li><a class="dropdown-item" href="#" onclick="filterDocuments('all')">Tous</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="filterDocuments('.pdf')">PDF</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="filterDocuments('.docx')">Word</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="filterDocuments('.xlsx')">Excel</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="filterDocuments('.csv')">CSV</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Liste des documents -->
+                    <div id="documents-list" style="max-height: 600px; overflow-y: auto;">
+                        <div class="text-center p-4">
+                            <div class="processing-indicator mx-auto mb-3"></div>
+                            <p class="text-muted">Chargement des documents...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Répartition par type -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="document-card p-4">
+                    <h5 class="mb-3">
+                        <i class="bi bi-pie-chart"></i> Répartition par Type
+                    </h5>
+                    <div id="type-distribution" class="row">
+                        <!-- Généré dynamiquement -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de détails -->
+    <div class="modal fade" id="documentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-file-earmark-text"></i> Détails du Document
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="document-details">
+                        <!-- Contenu généré dynamiquement -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Fermer</button>
+                    <button type="button" class="btn btn-danger" onclick="removeDocument()">
+                        <i class="bi bi-trash"></i> Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="notification-toast" class="toast" role="alert">
+            <div class="toast-header bg-dark text-light">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong class="me-auto">Notification</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body bg-dark text-light" id="toast-message">
+                <!-- Message -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // État de l'application
+        const app = {
+            selectedFiles: [],
+            currentFilter: 'all',
+            isUploading: false,
+            currentDocument: null
+        };
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDocumentsStats();
+            loadDocumentsList();
+            
+            // Auto-refresh toutes les 30 secondes
+            setInterval(() => {
+                if (!app.isUploading) {
+                    loadDocumentsStats();
+                }
+            }, 30000);
+        });
+
+        // =============================================================================
+        // GESTION DU DRAG & DROP
+        // =============================================================================
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+            event.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            
+            const files = Array.from(event.dataTransfer.files);
+            handleFiles(files);
+        }
+
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            // Filtrer les types supportés
+            const supportedTypes = ['.pdf', '.docx', '.doc', '.txt', '.md', '.csv', '.xlsx', '.xls', '.json'];
+            const validFiles = files.filter(file => {
+                const extension = '.' + file.name.split('.').pop().toLowerCase();
+                return supportedTypes.includes(extension);
+            });
+
+            if (validFiles.length === 0) {
+                showNotification('Aucun fichier supporté sélectionné', 'warning');
+                return;
+            }
+
+            if (validFiles.length !== files.length) {
+                showNotification(`${files.length - validFiles.length} fichiers ignorés (type non supporté)`, 'warning');
+            }
+
+            app.selectedFiles = validFiles;
+            displayFilePreview();
+        }
+
+        function displayFilePreview() {
+            const preview = document.getElementById('upload-preview');
+            const fileList = document.getElementById('file-list');
+
+            if (app.selectedFiles.length === 0) {
+                preview.style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            app.selectedFiles.forEach((file, index) => {
+                const extension = '.' + file.name.split('.').pop().toLowerCase();
+                const iconClass = getFileIconClass(extension);
+                const size = formatFileSize(file.size);
+
+                html += `
+                    <div class="d-flex align-items-center justify-content-between mb-2 p-2 border rounded">
+                        <div class="d-flex align-items-center">
+                            <div class="file-type-icon ${iconClass} me-2" style="width: 30px; height: 30px; font-size: 12px;">
+                                ${extension.substring(1).toUpperCase()}
+                            </div>
+                            <div>
+                                <div class="fw-medium">${file.name}</div>
+                                <small class="text-muted">${size}</small>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm" onclick="removeFileFromSelection(${index})">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                `;
+            });
+
+            fileList.innerHTML = html;
+            preview.style.display = 'block';
+        }
+
+        function removeFileFromSelection(index) {
+            app.selectedFiles.splice(index, 1);
+            displayFilePreview();
+        }
+
+        function clearFileSelection() {
+            app.selectedFiles = [];
+            document.getElementById('file-input').value = '';
+            document.getElementById('upload-preview').style.display = 'none';
+        }
+
+        // =============================================================================
+        // UPLOAD ET TRAITEMENT
+        // =============================================================================
+
+        async function uploadSelectedFiles() {
+            if (app.selectedFiles.length === 0) {
+                showNotification('Aucun fichier sélectionné', 'warning');
+                return;
+            }
+
+            app.isUploading = true;
+            const formData = new FormData();
+
+            app.selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
+
+            try {
+                showNotification('Upload et traitement en cours...', 'info');
+                
+                const response = await fetch('/api/documents/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    clearFileSelection();
+                    await loadDocumentsStats();
+                    await loadDocumentsList();
+                } else {
+                    throw new Error(result.error);
+                }
+
+            } catch (error) {
+                console.error('Erreur upload:', error);
+                showNotification(`Erreur upload: ${error.message}`, 'error');
+            } finally {
+                app.isUploading = false;
+            }
+        }
+
+        async function processAllDocuments() {
+            try {
+                showNotification('Traitement de tous les documents...', 'info');
+
+                const response = await fetch('/api/documents/process-all', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const stats = result.results;
+                    showNotification(
+                        `Traitement terminé: ${stats.processed} réussis, ${stats.failed} échecs, ${stats.new_chunks} chunks créés`, 
+                        'success'
+                    );
+                    await loadDocumentsStats();
+                    await loadDocumentsList();
+                } else {
+                    throw new Error(result.error);
+                }
+
+            } catch (error) {
+                console.error('Erreur traitement:', error);
+                showNotification(`Erreur traitement: ${error.message}`, 'error');
+            }
+        }
+
+        // =============================================================================
+        // CHARGEMENT DES DONNÉES
+        // =============================================================================
+
+        async function loadDocumentsStats() {
+            try {
+                const response = await fetch('/api/documents/stats');
+                const result = await response.json();
+
+                if (result.success) {
+                    const stats = result.stats;
+                    
+                    document.getElementById('total-documents').textContent = stats.total_documents || 0;
+                    document.getElementById('total-chunks').textContent = stats.total_chunks || 0;
+                    document.getElementById('avg-chunks').textContent = stats.avg_chunks_per_document || 0;
+                    document.getElementById('recent-docs').textContent = stats.documents_last_week || 0;
+
+                    // Répartition par type
+                    displayTypeDistribution(stats.documents_by_type || {});
+                }
+
+            } catch (error) {
+                console.error('Erreur chargement stats:', error);
+            }
+        }
+
+        async function loadDocumentsList() {
+            try {
+                const response = await fetch('/api/documents/list');
+                const result = await response.json();
+
+                if (result.success) {
+                    displayDocumentsList(result.documents);
+                } else {
+                    throw new Error(result.error);
+                }
+
+            } catch (error) {
+                console.error('Erreur chargement liste:', error);
+                document.getElementById('documents-list').innerHTML = `
+                    <div class="text-center p-4">
+                        <i class="bi bi-exclamation-triangle fs-1 text-warning"></i>
+                        <p class="text-muted mt-2">Erreur chargement des documents</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayDocumentsList(documents) {
+            const container = document.getElementById('documents-list');
+
+            if (documents.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-4">
+                        <i class="bi bi-file-earmark fs-1 text-muted"></i>
+                        <p class="text-muted mt-2">Aucun document traité</p>
+                        <small class="text-muted">Ajoutez des documents pour enrichir la base RAG</small>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            documents.forEach(doc => {
+                if (app.currentFilter !== 'all' && doc.file_type !== app.currentFilter) {
+                    return;
+                }
+
+                const iconClass = getFileIconClass(doc.file_type);
+                const statusClass = getStatusClass(doc.status);
+                const date = new Date(doc.processing_date).toLocaleDateString('fr-FR', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                html += `
+                    <div class="document-item border-bottom pb-3 mb-3" data-document='${JSON.stringify(doc)}'>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <div class="file-type-icon ${iconClass} me-3">
+                                    ${doc.file_type.substring(1).toUpperCase()}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">${doc.filename}</h6>
+                                    <div class="d-flex align-items-center text-muted small">
+                                        <span class="me-3">
+                                            <i class="bi bi-clock"></i> ${date}
+                                        </span>
+                                        <span class="me-3">
+                                            <i class="bi bi-puzzle"></i> ${doc.chunks_created} chunks
+                                        </span>
+                                        <span class="me-3">
+                                            <i class="bi bi-hdd"></i> ${doc.file_size_mb} MB
+                                        </span>
+                                        <span class="badge bg-${statusClass}">${doc.status}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="document-actions">
+                                <button class="btn btn-outline-light btn-sm me-2" 
+                                        onclick="showDocumentDetails('${doc.filename}')">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" 
+                                        onclick="confirmRemoveDocument('${doc.filename}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function displayTypeDistribution(typeStats) {
+            const container = document.getElementById('type-distribution');
+
+            if (Object.keys(typeStats).length === 0) {
+                container.innerHTML = '<p class="text-muted">Aucune donnée disponible</p>';
+                return;
+            }
+
+            let html = '';
+            Object.entries(typeStats).forEach(([type, stats]) => {
+                const iconClass = getFileIconClass(type);
+                const percentage = ((stats.count / Object.values(typeStats).reduce((sum, s) => sum + s.count, 0)) * 100).toFixed(1);
+
+                html += `
+                    <div class="col-md-3 mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="file-type-icon ${iconClass} me-3">
+                                ${type.substring(1).toUpperCase()}
+                            </div>
+                            <div>
+                                <div class="fw-medium">${stats.count} fichiers</div>
+                                <div class="small text-muted">${stats.chunks} chunks (${percentage}%)</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // =============================================================================
+        // GESTION DES DOCUMENTS
+        // =============================================================================
+
+        function showDocumentDetails(filename) {
+            const documentItems = document.querySelectorAll('.document-item');
+            let documentData = null;
+
+            documentItems.forEach(item => {
+                const data = JSON.parse(item.getAttribute('data-document'));
+                if (data.filename === filename) {
+                    documentData = data;
+                }
+            });
+
+            if (!documentData) {
+                showNotification('Document non trouvé', 'error');
+                return;
+            }
+
+            app.currentDocument = documentData;
+
+            // Afficher les détails dans le modal
+            const detailsContainer = document.getElementById('document-details');
+            const iconClass = getFileIconClass(documentData.file_type);
+            
+            detailsContainer.innerHTML = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center p-3">
+                            <div class="file-type-icon ${iconClass} mx-auto mb-3" style="width: 80px; height: 80px; font-size: 24px;">
+                                ${documentData.file_type.substring(1).toUpperCase()}
+                            </div>
+                            <h6>${documentData.filename}</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <h6>Informations</h6>
+                        <table class="table table-dark table-sm">
+                            <tr>
+                                <td>Type de fichier:</td>
+                                <td>${documentData.file_type}</td>
+                            </tr>
+                            <tr>
+                                <td>Taille:</td>
+                                <td>${documentData.file_size_mb} MB</td>
+                            </tr>
+                            <tr>
+                                <td>Date de traitement:</td>
+                                <td>${new Date(documentData.processing_date).toLocaleString('fr-FR')}</td>
+                            </tr>
+                            <tr>
+                                <td>Chunks créés:</td>
+                                <td>${documentData.chunks_created}</td>
+                            </tr>
+                            <tr>
+                                <td>Statut:</td>
+                                <td><span class="badge bg-${getStatusClass(documentData.status)}">${documentData.status}</span></td>
+                            </tr>
+                        </table>
+
+                        <h6 class="mt-3">Impact RAG</h6>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Ce document a contribué <strong>${documentData.chunks_created} chunks</strong> 
+                            à la base de connaissances RAG, enrichissant les réponses de l'IA sur les sujets abordés.
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Afficher le modal
+            const modal = new bootstrap.Modal(document.getElementById('documentModal'));
+            modal.show();
+        }
+
+        function confirmRemoveDocument(filename) {
+            if (confirm(`Êtes-vous sûr de vouloir supprimer "${filename}" de la base RAG ?`)) {
+                removeDocumentFromRAG(filename);
+            }
+        }
+
+        async function removeDocumentFromRAG(filename) {
+            try {
+                const response = await fetch(`/api/documents/remove/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('Document supprimé de la base RAG', 'success');
+                    await loadDocumentsStats();
+                    await loadDocumentsList();
+                } else {
+                    throw new Error(result.error);
+                }
+
+            } catch (error) {
+                console.error('Erreur suppression:', error);
+                showNotification(`Erreur suppression: ${error.message}`, 'error');
+            }
+        }
+
+        function removeDocument() {
+            if (app.currentDocument) {
+                confirmRemoveDocument(app.currentDocument.filename);
+                bootstrap.Modal.getInstance(document.getElementById('documentModal')).hide();
+            }
+        }
+
+        // =============================================================================
+        // FILTRAGE
+        // =============================================================================
+
+        function filterDocuments(filter) {
+            app.currentFilter = filter;
+            loadDocumentsList();
+        }
+
+        // =============================================================================
+        // UTILITAIRES
+        // =============================================================================
+
+        function getFileIconClass(fileType) {
+            const iconMap = {
+                '.pdf': 'file-pdf',
+                '.docx': 'file-docx',
+                '.doc': 'file-docx',
+                '.txt': 'file-txt',
+                '.md': 'file-md',
+                '.csv': 'file-csv',
+                '.xlsx': 'file-xlsx',
+                '.xls': 'file-xlsx',
+                '.json': 'file-json'
+            };
+            return iconMap[fileType] || 'file-txt';
+        }
+
+        function getStatusClass(status) {
+            const statusMap = {
+                'success': 'success',
+                'failed': 'danger',
+                'processing': 'warning',
+                'deleted': 'secondary'
+            };
+            return statusMap[status] || 'secondary';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function showNotification(message, type = 'info') {
+            const toast = document.getElementById('notification-toast');
+            const messageEl = document.getElementById('toast-message');
+            
+            messageEl.textContent = message;
+            
+            // Changer la couleur selon le type
+            toast.className = 'toast';
+            if (type === 'error') {
+                toast.classList.add('bg-danger');
+            } else if (type === 'success') {
+                toast.classList.add('bg-success');
+            } else if (type === 'warning') {
+                toast.classList.add('bg-warning');
+            }
+
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        }
+
+        // =============================================================================
+        // RACCOURCIS CLAVIER
+        // =============================================================================
+
+        document.addEventListener('keydown', function(event) {
+            // Ctrl+U = Upload
+            if (event.ctrlKey && event.key === 'u') {
+                event.preventDefault();
+                document.getElementById('file-input').click();
+            }
+            
+            // Ctrl+R = Actualiser
+            if (event.ctrlKey && event.key === 'r') {
+                event.preventDefault();
+                loadDocumentsStats();
+                loadDocumentsList();
+            }
+
+            // Ctrl+T = Traiter tout
+            if (event.ctrlKey && event.key === 't') {
+                event.preventDefault();
+                processAllDocuments();
+            }
+        });
+
+        console.log('📄 Interface Documents RAG initialisée');
+        console.log('💡 Raccourcis: Ctrl+U (Upload), Ctrl+R (Actualiser), Ctrl+T (Traiter tout)');
+    </script>
+</body>
+</html>

@@ -433,6 +433,81 @@
                             </div>
                         </div>
                     </div>
+                        <!-- Widget d'interprétation automatique -->
+                    <div class="row mt-4" id="interpretation-section" style="display: none;">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="bi bi-brain text-primary"></i>
+                                        Interprétation Automatique des Données
+                                    </h5>
+                                    <div>
+                                        <button class="btn btn-outline-light btn-sm me-2" onclick="refreshInterpretation()">
+                                            <i class="bi bi-arrow-clockwise"></i> Actualiser
+                                        </button>
+                                        <button class="btn btn-primary btn-sm" onclick="startNewInterpretation()">
+                                            <i class="bi bi-play-circle"></i> Nouvelle Analyse
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Contenu du widget d'interprétation -->
+                                    <!-- Copier ici tout le contenu de interpretation_widget.html -->
+                                    
+                                    <!-- Status de l'interprétation -->
+                                    <div id="interpretation-status" class="alert alert-info">
+                                        <div class="d-flex align-items-center">
+                                            <div class="loading-spinner me-3"></div>
+                                            <div>
+                                                <strong>Analyse en cours...</strong><br>
+                                                <small>L'IA analyse vos données et génère des insights automatiques</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Résumé exécutif -->
+                                    <div id="executive-summary" style="display: none;">
+                                        <div class="row mb-4">
+                                            <div class="col-md-8">
+                                                <h6><i class="bi bi-file-text"></i> Résumé Exécutif</h6>
+                                                <div id="executive-content" class="p-3 bg-dark rounded">
+                                                    <!-- Contenu généré automatiquement -->
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <h6><i class="bi bi-speedometer2"></i> Métriques Clés</h6>
+                                                <div id="key-metrics">
+                                                    <div class="row">
+                                                        <div class="col-6 text-center mb-2">
+                                                            <div class="metric-value text-success" id="overall-confidence">-</div>
+                                                            <small class="text-muted">Confiance Globale</small>
+                                                        </div>
+                                                        <div class="col-6 text-center mb-2">
+                                                            <div class="metric-value text-warning" id="data-quality">-</div>
+                                                            <small class="text-muted">Qualité Données</small>
+                                                        </div>
+                                                    </div>
+                                                    <!-- ... reste des métriques ... -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Onglets d'analyses détaillées -->
+                                    <div id="detailed-interpretations" style="display: none;">
+                                        <!-- Contenu des onglets d'analyse -->
+                                        <!-- ... -->
+                                    </div>
+
+                                    <!-- Footer avec timestamp et feedback -->
+                                    <div id="interpretation-footer" class="mt-4 pt-3 border-top" style="display: none;">
+                                        <!-- ... -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Consommation -->
                     <div class="tab-pane fade" id="consumption">

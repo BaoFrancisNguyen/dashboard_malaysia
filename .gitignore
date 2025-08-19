@@ -1,18 +1,32 @@
-# ==============================================================================
-# DASHBOARD MALAYSIA - GITIGNORE COMPLET
-# ==============================================================================
+# Dashboard Malaysia - Git Ignore
 
-# ==============================================================================
+# =====================================
+# ENVIRONNEMENTS VIRTUELS (PRIORITÉ)
+# =====================================
+# Tous les patterns possibles d'environnements virtuels
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.env/
+*-env/
+*_env/
+*/venv/
+*/env/
+malaysia_dashboard-env/
+malaysia-dashboard-env/
+dashboard-env/
+dashboard_env/
+
+# =====================================
 # PYTHON
-# ==============================================================================
-
-# Byte-compiled / optimized / DLL files
+# =====================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -26,7 +40,6 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
@@ -54,168 +67,38 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+cover/
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# PEP 582
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# ==============================================================================
-# ENVIRONNEMENTS VIRTUELS
-# ==============================================================================
-
-# Virtual environments (tous les noms possibles)
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-.env/
-.venv/
-.ENV/
-.VENV/
-
-# Conda environments
-.conda/
-miniconda/
-anaconda/
-miniconda3/
-anaconda3/
-
-# Pipenv virtual environment
-.venv
-
-# Poetry virtual environment
-poetry.lock
-
-# virtualenv
-pyvenv.cfg
-
-# ==============================================================================
-# VARIABLES D'ENVIRONNEMENT ET SECRETS
-# ==============================================================================
-
-# Environment variables
+# =====================================
+# ENVIRONNEMENTS ET CONFIGURATION
+# =====================================
 .env
 .env.local
-.env.*.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.development
+.env.test
+.env.production
+.venv
+.ENV
+.env.bak
+.venv.bak
 
-# Secrets et API keys
-secrets.json
-config_secrets.json
-*.secret
-*.key
-*.pem
-*.p12
-*.pfx
-
-# OAuth tokens
-.oauth
-oauth.json
-
-# ==============================================================================
+# =====================================
 # IDEs ET ÉDITEURS
-# ==============================================================================
-
-# Visual Studio Code
+# =====================================
 .vscode/
-*.code-workspace
-
-# PyCharm
 .idea/
-*.iml
-*.ipr
-*.iws
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim
 *.swp
 *.swo
 *~
+.project
+.metadata
+.settings/
+*.sublime-workspace
+*.sublime-project
 
-# Emacs
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-*.elc
-auto-save-list
-tramp
-.\#*
-
-# Atom
-.atom/
-
-# ==============================================================================
+# =====================================
 # SYSTÈME D'EXPLOITATION
-# ==============================================================================
-
-# macOS
+# =====================================
 .DS_Store
 .DS_Store?
 ._*
@@ -223,42 +106,26 @@ tramp
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# Windows
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-*.stackdump
-[Dd]esktop.ini
+desktop.ini
 $RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
 
-# Linux
-*~
-.directory
-.Trash-*
-
-# ==============================================================================
-# DONNÉES ET FICHIERS DASHBOARD MALAYSIA
-# ==============================================================================
-
-# Données d'exports du projet Malaysia
-exports/
+# =====================================
+# APPLICATION SPÉCIFIQUE
+# =====================================
+# Données et exports
 data/
-datasets/
+exports/
+*.csv
+*.xlsx
+*.parquet
+*.json.gz
 
-# Base de données RAG
-*.db
-*.sqlite
-*.sqlite3
+# Logs
+logs/
+*.log
+*.log.*
 
-# Cache et fichiers temporaires
+# Cache et temporaires
 cache/
 temp/
 tmp/
@@ -266,138 +133,54 @@ tmp/
 *.temp
 .cache/
 
-# Logs
-logs/
-*.log
-*.log.*
+# Base de données
+*.db
+*.sqlite
+*.sqlite3
 
-# Modèles ML sauvegardés
+# Modèles et checkpoints
 models/
-*.pkl
-*.joblib
+checkpoints/
+*.pth
 *.h5
-*.model
+*.pkl
+*.pickle
 
-# Fichiers volumineux de données
-*.csv
-*.xlsx
-*.parquet
-*.json
-!config.json
-!package.json
-
-# Fichiers de sauvegarde
-*.bak
-*.backup
-*.old
-
-# ==============================================================================
-# DÉVELOPPEMENT WEB
-# ==============================================================================
-
-# Node modules (si extension frontend)
+# =====================================
+# DÉPENDANCES ET PACKAGES
+# =====================================
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+bower_components/
+.npm
+.yarn-integrity
+package-lock.json
+yarn.lock
 
-# CSS compilés
-*.css.map
-*.sass.cache
+# =====================================
+# SÉCURITÉ
+# =====================================
+*.key
+*.pem
+*.p12
+*.crt
+secrets/
+.secrets/
+config/secrets/
 
-# ==============================================================================
-# DOCUMENTATION ET RAPPORTS
-# ==============================================================================
-
-# Documentation générée
-docs/build/
+# =====================================
+# DOCUMENTATION BUILD
+# =====================================
+docs/_build/
 site/
+.docusaurus/
 
-# Rapports
-reports/
-*.pdf
-*.docx
-*.xlsx
-
-# ==============================================================================
-# OLLAMA ET MODÈLES LLM
-# ==============================================================================
-
-# Modèles Ollama (très volumineux)
-ollama/
-.ollama/
-
-# Embeddings cache
-embeddings/
-*.embeddings
-
-# ==============================================================================
-# CONFIGURATION LOCALE
-# ==============================================================================
-
-# Configuration locale (garde config.json par défaut)
-config_local.json
-settings_local.json
-dashboard_config.json
-
-# ==============================================================================
-# TESTS ET BENCHMARKS
-# ==============================================================================
-
-# Résultats de tests
-test_results/
-benchmark_results/
-.coverage
-htmlcov/
-
-# ==============================================================================
-# DÉPLOIEMENT
-# ==============================================================================
-
-# Docker
-.dockerignore
-Dockerfile.local
-
-# Kubernetes
-*.yaml.local
-*.yml.local
-
-# ==============================================================================
+# =====================================
 # DIVERS
-# ==============================================================================
-
-# Archives
-*.zip
-*.tar.gz
-*.rar
-*.7z
-
-# Fichiers de lock (garde requirements.txt)
-poetry.lock
-Pipfile.lock
-
-# Monitoring et profiling
-*.prof
-*.profile
-
-# ==============================================================================
-# EXCEPTIONS - FICHIERS À GARDER
-# ==============================================================================
-
-# Configuration de base (décommentez si nécessaire)
-!config.json
-!dashboard/requirements.txt
-!requirements.txt
-!.env.example
-!.gitkeep
-
-# Templates et assets essentiels
-!templates/
-!static/
-!dashboard/static/
-!dashboard/templates/
-
-# Documentation essentielle
-!README.md
-!LICENSE
-!CHANGELOG.md
+# =====================================
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+cython_debug/
