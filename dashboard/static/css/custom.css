@@ -1,0 +1,86 @@
+/* static/css/custom.css */
+/* Styles personnalisés supplémentaires pour le dashboard Malaysia */
+
+/* Variables CSS personnalisées */
+:root {
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-card-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --gradient-warning: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+/* Améliorations des cartes */
+.card-enhanced {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: var(--shadow-card);
+    transition: var(--transition-smooth);
+}
+
+.card-enhanced:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+}
+
+/* Boutons avec effets */
+.btn-gradient-primary {
+    background: var(--gradient-primary);
+    border: none;
+    color: white;
+    transition: var(--transition-smooth);
+}
+
+.btn-gradient-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Animations de chargement */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Indicateurs de statut */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.online { background-color: #10b981; }
+.status-dot.offline { background-color: #ef4444; }
+.status-dot.loading { background-color: #f59e0b; }
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .card-enhanced {
+        margin-bottom: 1rem;
+    }
+    
+    .btn-group-vertical > .btn {
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] .card-enhanced {
+    background: rgba(30, 41, 59, 0.95);
+    border-color: rgba(51, 65, 85, 0.3);
+}
+
+[data-theme="dark"] .skeleton {
+    background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+    background-size: 200% 100%;
+}

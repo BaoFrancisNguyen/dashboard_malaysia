@@ -1,0 +1,21 @@
+{
+  "app": {
+    "name": "Malaysia Electricity Dashboard",
+    "version": "1.0.0",
+    "debug": true,
+    "port": 8080
+  },
+  "ollama": {
+    "base_url": "http://localhost:11434",
+    "model": "mistral:latest",
+    "timeout": 120
+  },
+  "rag": {
+    "db_path": "data/rag_knowledge.db",
+    "max_embeddings": 10000
+  },
+  "data": {
+    "exports_dir": "exports",
+    "cache_timeout": 3600
+  }
+}

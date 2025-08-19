@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Malaysia Electricity Dashboard</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #64748b;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --danger-color: #dc2626;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-light: #e2e8f0;
+            --border-color: #334155;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .dashboard-header {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            background: rgba(37, 99, 235, 0.1);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        .metric-card {
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+        }
+
+        .metric-trend {
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .trend-up { color: var(--success-color); }
+        .trend-down { color: var(--danger-color); }
+        .trend-stable { color: var(--warning-color); }
+
+        .chart-container {
+            height: 400px;
+            position: relative;
+        }
+
+        .chat-container {
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .chat-message {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            max-width: 85%;
+        }
+
+        .message-user {
+            background: var(--primary-color);
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message-assistant {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+
+        .message-thinking {
+            background: rgba(100, 116, 139, 0.2);
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        .chat-input {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+        }
+
+        .chat-input:focus {
+            background: var(--bg-card);
+            border-color: var(--primary-color);
+            color: var(--text-light);
+            box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .status-connected { background: var(--success-color); }
+        .status-loading { background: var(--warning-color); animation: pulse 2s infinite; }
+        .status-error { background: var(--danger-color); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .sidebar {
+            background: var(--bg-card);
+            border-right: 1px solid var(--border-color);
+            height: calc(100vh - 76px);
+            overflow-y: auto;
+        }
+
+        .nav-pills .nav-link {
+            color: var(--text-light);
+            border-radius: 8px;
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-pills .nav-link.active {
+            background: var(--primary-color);
+        }
+
+        .nav-pills .nav-link:hover {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .data-table {
+            background: var(--bg-card);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table-dark {
+            --bs-table-bg: var(--bg-card);
+            --bs-table-border-color: var(--border-color);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert-dark {
+            background: var(--bg-card);
+            border-color: var(--border-color);
+            color: var(--text-light);
+        }
+
+        .form-control, .form-select {
+            background: var(--bg-card);
+            border-color: var(--border-color);
+            color: var(--text-light);
+        }
+
+        .map-container {
+            height: 500px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: var(--bg-card);
+            padding: 0.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: var(--bg-card);
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            max-width: 200px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-card);
+            color: var(--text-light);
+            border-radius: 8px;
+        }
+
+        .leaflet-popup-tip {
+            background: var(--bg-card);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header py-3">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-lightning-charge text-warning"></i>
+                        Malaysia Electricity Dashboard
+                    </h1>
+                    <small class="text-muted">Analyse intelligente avec LLM local</small>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div id="connection-status" class="d-inline-block me-3">
+                        <span class="status-indicator status-loading"></span>
+                        <span id="status-text">Connexion...</span>
+                    </div>
+                    <button class="btn btn-outline-light btn-sm" onclick="loadData()">
+                        <i class="bi bi-arrow-clockwise"></i> Charger Données
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 sidebar p-3">
+                <div class="nav nav-pills flex-column" id="nav-tab">
+                    <a class="nav-link active" href="#overview" data-bs-toggle="pill">
+                        <i class="bi bi-house"></i> Vue d'ensemble
+                    </a>
+                    <a class="nav-link" href="#consumption" data-bs-toggle="pill">
+                        <i class="bi bi-graph-up"></i> Consommation
+                    </a>
+                    <a class="nav-link" href="#buildings" data-bs-toggle="pill">
+                        <i class="bi bi-building"></i> Bâtiments
+                    </a>
+                    <a class="nav-link" href="#analysis" data-bs-toggle="pill">
+                        <i class="bi bi-chat-dots"></i> Analyse LLM
+                    </a>
+                    <a class="nav-link" href="#data" data-bs-toggle="pill">
+                        <i class="bi bi-table"></i> Données
+                    </a>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Métriques rapides -->
+                <div class="mt-4">
+                    <h6 class="text-muted">Métriques Rapides</h6>
+                    <div id="quick-metrics">
+                        <div class="d-flex justify-content-between py-1">
+                            <small>Bâtiments:</small>
+                            <small id="quick-buildings">-</small>
+                        </div>
+                        <div class="d-flex justify-content-between py-1">
+                            <small>Consommation:</small>
+                            <small id="quick-consumption">-</small>
+                        </div>
+                        <div class="d-flex justify-content-between py-1">
+                            <small>Dernière MAJ:</small>
+                            <small id="quick-update">-</small>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-10 p-4">
+                <div class="tab-content" id="nav-tabContent">
+                    
+                    <!-- Vue d'ensemble -->
+                    <div class="tab-pane fade show active" id="overview">
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h2><i class="bi bi-speedometer2"></i> Vue d'ensemble</h2>
+                            </div>
+                        </div>
+
+                        <!-- Métriques principales -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card metric-card">
+                                    <div class="metric-value text-primary" id="total-buildings">-</div>
+                                    <div class="metric-label">Bâtiments Total</div>
+                                    <div class="metric-trend" id="buildings-trend">
+                                        <i class="bi bi-arrow-up trend-up"></i> +2.3%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card metric-card">
+                                    <div class="metric-value text-success" id="total-consumption">-</div>
+                                    <div class="metric-label">Consommation (kWh)</div>
+                                    <div class="metric-trend" id="consumption-trend">
+                                        <i class="bi bi-arrow-down trend-down"></i> -1.2%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card metric-card">
+                                    <div class="metric-value text-warning" id="avg-consumption">-</div>
+                                    <div class="metric-label">Moyenne (kWh)</div>
+                                    <div class="metric-trend" id="avg-trend">
+                                        <i class="bi bi-dash trend-stable"></i> 0.1%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card metric-card">
+                                    <div class="metric-value text-info" id="data-points">-</div>
+                                    <div class="metric-label">Points de Données</div>
+                                    <div class="metric-trend" id="points-trend">
+                                        <i class="bi bi-arrow-up trend-up"></i> +5.7%
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graphiques principaux -->
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="bi bi-graph-up"></i> Évolution de la Consommation</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="consumption-chart" class="chart-container"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="bi bi-pie-chart"></i> Répartition par Type</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="building-types-chart" class="chart-container"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consommation -->
+                    <div class="tab-pane fade" id="consumption">
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <h2><i class="bi bi-graph-up"></i> Analyse de Consommation</h2>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <select class="form-select" id="time-range-select" onchange="updateConsumptionCharts()">
+                                            <option value="7d">7 jours</option>
+                                            <option value="30d">30 jours</option>
+                                            <option value="90d">90 jours</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <select class="form-select" id="building-type-select" onchange="updateConsumptionCharts()">
+                                            <option value="all">Tous types</option>
+                                            <option value="residential">Résidentiel</option>
+                                            <option value="commercial">Commercial</option>
+                                            <option value="industrial">Industriel</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>Détails de Consommation</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="detailed-consumption-chart" class="chart-container"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>Patterns Horaires</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="hourly-patterns-chart" class="chart-container"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>Heatmap Consommation</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="consumption-heatmap" class="chart-container"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bâtiments -->
+                    <div class="tab-pane fade" id="buildings">
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h2><i class="bi bi-building"></i> Analyse des Bâtiments</h2>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5><i class="bi bi-geo-alt"></i> Carte Interactive des Bâtiments</h5>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-light" onclick="showBuildingsMap()">
+                                                <i class="bi bi-building"></i> Bâtiments
+                                            </button>
+                                            <button class="btn btn-outline-light" onclick="showConsumptionHeatmap()">
+                                                <i class="bi bi-thermometer-half"></i> Heatmap
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body p-0 position-relative">
+                                        <div id="buildings-map" class="map-container"></div>
+                                        
+                                        <!-- Contrôles carte -->
+                                        <div class="map-controls">
+                                            <div class="d-flex flex-column gap-2">
+                                                <div>
+                                                    <label class="form-label text-light small mb-1">Densité:</label>
+                                                    <input type="range" class="form-range" id="map-density" 
+                                                           min="10" max="100" value="100" step="10"
+                                                           onchange="updateMapDensity(this.value)">
+                                                    <small class="text-muted"><span id="density-display">100</span>%</small>
+                                                </div>
+                                                <div>
+                                                    <select class="form-select form-select-sm" id="map-type-filter" 
+                                                            onchange="updateMapTypeFilter(this.value)">
+                                                        <option value="all">Tous types</option>
+                                                        <option value="residential">Résidentiel</option>
+                                                        <option value="commercial">Commercial</option>
+                                                        <option value="industrial">Industriel</option>
+                                                        <option value="office">Bureau</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Légende -->
+                                        <div class="map-legend" id="map-legend">
+                                            <h6 class="small mb-2">Types de Bâtiments</h6>
+                                            <div id="legend-items">
+                                                <!-- Légende générée dynamiquement -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="bi bi-bar-chart"></i> Statistiques Carte</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="map-statistics">
+                                            <div class="row text-center mb-3">
+                                                <div class="col-6">
+                                                    <div class="metric-value h5" id="map-total-buildings">-</div>
+                                                    <small class="text-muted">Bâtiments</small>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="metric-value h5" id="map-displayed">-</div>
+                                                    <small class="text-muted">Affichés</small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <h6 class="small">Répartition par Type</h6>
+                                                <div id="type-breakdown">
+                                                    <!-- Types générés dynamiquement -->
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <h6 class="small">Couverture Géographique</h6>
+                                                <div class="row text-center">
+                                                    <div class="col-6">
+                                                        <small class="text-muted">Nord</small>
+                                                        <div id="geo-north">-</div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <small class="text-muted">Sud</small>
+                                                        <div id="geo-south">-</div>
+                                                    </div>
+                                                </div>
+                                                <div class="row text-center mt-2">
+                                                    <div class="col-6">
+                                                        <small class="text-muted">Est</small>
+                                                        <div id="geo-east">-</div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <small class="text-muted">Ouest</small>
+                                                        <div id="geo-west">-</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="card mt-3">
+                                    <div class="card-header">
+                                        <h5><i class="bi bi-list"></i> Zones Principales</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="top-zones">
+                                            <!-- Zones générées dynamiquement -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analyse LLM -->
+                    <div class="tab-pane fade" id="analysis">
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <h2><i class="bi bi-chat-dots"></i> Analyse Intelligente (LLM)</h2>
+                                <p class="text-muted">Posez vos questions sur les données - L'IA Mistral vous répond avec le contexte RAG</p>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="alert alert-info">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-cpu me-2"></i>
+                                        <div>
+                                            <strong>Ollama Status:</strong><br>
+                                            <span id="ollama-status">Vérification...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="bi bi-chat-left-text"></i> Chat avec l'IA</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chat-container">
+                                            <div class="chat-messages" id="chat-messages">
+                                                <div class="chat-message message-assistant">
+                                                    <strong>Assistant IA:</strong> Bonjour ! Je suis votre assistant d'analyse des données énergétiques de Malaysia. Posez-moi vos questions sur la consommation, les bâtiments, ou les tendances.
+                                                </div>
+                                            </div>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control chat-input" id="chat-input" 
+                                                       placeholder="Posez votre question..." 
+                                                       onkeypress="handleChatKeyPress(event)">
+                                                <button class="btn btn-primary" onclick="sendChatMessage()">
+                                                    <i class="bi bi-send"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="bi bi-lightbulb"></i> Questions Suggérées</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-outline-light btn-sm text-start" onclick="askSuggestedQuestion('Quelle est la consommation moyenne par type de bâtiment ?')">
+                                                📊 Consommation par type
+                                            </button>
+                                            <button class="btn btn-outline-light btn-sm text-start" onclick="askSuggestedQuestion('Quels sont les pics de consommation horaires ?')">
+                                                ⏰ Pics horaires
+                                            </button>
+                                            <button class="btn btn-outline-light btn-sm text-start" onclick="askSuggestedQuestion('Quelles zones consomment le plus ?')">
+                                                🗺️ Zones consommatrices
+                                            </button>
+                                            <button class="btn btn-outline-light btn-sm text-start" onclick="askSuggestedQuestion('Y a-t-il des tendances saisonnières ?')">
+                                                📅 Tendances saisonnières
+                                            </button>
+                                            <button class="btn btn-outline-light btn-sm text-start" onclick="askSuggestedQuestion('Recommandations d\\'optimisation énergétique ?')">
+                                                💡 Optimisations
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="card mt-3">
+                                    <div class="card-header">
+                                        <h6><i class="bi bi-database"></i> Base RAG</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6">
+                                                <div class="metric-value h6" id="rag-items">-</div>
+                                                <small class="text-muted">Items indexés</small>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="metric-value h6" id="rag-types">-</div>
+                                                <small class="text-muted">Types de données</small>
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-outline-warning btn-sm w-100 mt-2" onclick="updateRAG()">
+                                            <i class="bi bi-arrow-clockwise"></i> Mettre à jour RAG
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Données -->
+                    <div class="tab-pane fade" id="data">
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <h2><i class="bi bi-table"></i> Données Brutes</h2>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select" id="data-table-select" onchange="switchDataTable()">
+                                    <option value="buildings">Bâtiments</option>
+                                    <option value="consumption">Consommation</option>
+                                    <option value="weather">Météo</option>
+                                    <option value="water">Eau</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 id="data-table-title">Données des Bâtiments</h5>
+                                        <div>
+                                            <button class="btn btn-outline-light btn-sm" onclick="exportData()">
+                                                <i class="bi bi-download"></i> Exporter
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="data-table">
+                                            <div id="data-table-container">
+                                                <div class="text-center p-4">
+                                                    <div class="loading-spinner"></div>
+                                                    <p class="mt-2">Chargement des données...</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <!-- Leaflet HeatLayer -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
+    <script>
+        // Application state
+        const app = {
+            socket: null,
+            data: {
+                buildings: null,
+                consumption: null,
+                weather: null,
+                water: null
+            },
+            charts: {},
+            map: {
+                instance: null,
+                markers: null,
+                heatLayer: null,
+                currentView: 'buildings'
+            },
+            isConnected: false,
+            isDataLoaded: false
+        };
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            console.log('🚀 Initialisation du Dashboard Malaysia');
+            
+            // Initialize WebSocket connection
+            initializeSocket();
+            
+            // Initialize map
+            initializeMap();
+            
+            // Check Ollama status
+            checkOllamaStatus();
+            
+            // Load initial data
+            setTimeout(() => {
+                loadData();
+            }, 1000);
+        }
+
+        function initializeSocket() {
+            app.socket = io();
+            
+            app.socket.on('connect', function() {
+                console.log('✅ Connecté au serveur');
+                updateConnectionStatus('connected', 'Connecté');
+                app.isConnected = true;
+            });
+
+            app.socket.on('disconnect', function() {
+                console.log('❌ Déconnecté du serveur');
+                updateConnectionStatus('error', 'Déconnecté');
+                app.isConnected = false;
+            });
+
+            app.socket.on('analysis_started', function(data) {
+                addChatMessage('thinking', 'Analyse en cours...', true);
+            });
+
+            app.socket.on('analysis_complete', function(data) {
+                removeChatThinking();
+                addChatMessage('assistant', data.analysis.full_response || data.analysis);
+            });
+
+            app.socket.on('analysis_error', function(data) {
+                removeChatThinking();
+                addChatMessage('assistant', `Erreur d'analyse: ${data.error}`);
+            });
+        }
+
+        function updateConnectionStatus(status, text) {
+            const indicator = document.querySelector('.status-indicator');
+            const statusText = document.getElementById('status-text');
+            
+            indicator.className = `status-indicator status-${status}`;
+            statusText.textContent = text;
+        }
+
+        async function loadData() {
+            try {
+                updateConnectionStatus('loading', 'Chargement...');
+                
+                const response = await fetch('/api/data/load', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('✅ Données chargées:', result.data_info);
+                    app.isDataLoaded = true;
+                    updateConnectionStatus('connected', 'Données chargées');
+                    
+                    // Load data summary
+                    await loadDataSummary();
+                    
+                    // Load charts
+                    await loadCharts();
+                    
+                    // Load map data
+                    await loadMapData();
+                    
+                } else {
+                    throw new Error(result.error);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur chargement:', error);
+                updateConnectionStatus('error', 'Erreur chargement');
+                
+                // Show fallback message
+                addChatMessage('assistant', 
+                    `Erreur de chargement des données: ${error.message}. ` +
+                    'Vérifiez que le projet Malaysia a généré des données dans le dossier exports/'
+                );
+            }
+        }
+
+        async function loadDataSummary() {
+            try {
+                const response = await fetch('/api/data/summary');
+                const result = await response.json();
+                
+                if (result.success) {
+                    updateMetrics(result.summary);
+                    updateQuickMetrics(result.summary);
+                }
+            } catch (error) {
+                console.error('Erreur chargement résumé:', error);
+            }
+        }
+
+        function updateMetrics(summary) {
+            // Update main metrics
+            document.getElementById('total-buildings').textContent = 
+                (summary.total_buildings || 0).toLocaleString();
+            
+            document.getElementById('total-consumption').textContent = 
+                ((summary.total_consumption || 0) / 1000).toFixed(1) + 'k';
+            
+            document.getElementById('avg-consumption').textContent = 
+                (summary.avg_consumption || 0).toFixed(1);
+            
+            document.getElementById('data-points').textContent = 
+                (summary.total_data_points || 0).toLocaleString();
+        }
+
+        function updateQuickMetrics(summary) {
+            document.getElementById('quick-buildings').textContent = 
+                (summary.total_buildings || 0).toLocaleString();
+            
+            document.getElementById('quick-consumption').textContent = 
+                ((summary.total_consumption || 0) / 1000).toFixed(0) + 'k kWh';
+            
+            document.getElementById('quick-update').textContent = 
+                new Date().toLocaleTimeString();
+        }
+
+        async function loadCharts() {
+            try {
+                // Overview charts
+                const overviewResponse = await fetch('/api/charts/overview');
+                const overviewResult = await overviewResponse.json();
+                
+                if (overviewResult.success) {
+                    renderCharts(overviewResult.charts);
+                }
+                
+            } catch (error) {
+                console.error('Erreur chargement graphiques:', error);
+            }
+        }
+
+        function renderCharts(charts) {
+            // Render consumption chart
+            if (charts.consumption_timeline) {
+                Plotly.newPlot('consumption-chart', 
+                    charts.consumption_timeline.data,
+                    charts.consumption_timeline.layout
+                );
+            }
+            
+            // Render building types chart
+            if (charts.building_types) {
+                Plotly.newPlot('building-types-chart',
+                    charts.building_types.data,
+                    charts.building_types.layout
+                );
+            }
+        }
+
+        async function updateConsumptionCharts() {
+            const timeRange = document.getElementById('time-range-select').value;
+            const buildingType = document.getElementById('building-type-select').value;
+            
+            try {
+                const response = await fetch(
+                    `/api/charts/consumption?range=${timeRange}&type=${buildingType}`
+                );
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderConsumptionCharts(result.charts);
+                }
+                
+            } catch (error) {
+                console.error('Erreur mise à jour graphiques:', error);
+            }
+        }
+
+        function renderConsumptionCharts(charts) {
+            if (charts.detailed_consumption) {
+                Plotly.newPlot('detailed-consumption-chart',
+                    charts.detailed_consumption.data,
+                    charts.detailed_consumption.layout
+                );
+            }
+            
+            if (charts.hourly_patterns) {
+                Plotly.newPlot('hourly-patterns-chart',
+                    charts.hourly_patterns.data,
+                    charts.hourly_patterns.layout
+                );
+            }
+            
+            if (charts.consumption_heatmap) {
+                Plotly.newPlot('consumption-heatmap',
+                    charts.consumption_heatmap.data,
+                    charts.consumption_heatmap.layout
+                );
+            }
+        }
+
+        // Chat functionality
+        function handleChatKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendChatMessage();
+            }
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const question = input.value.trim();
+            
+            if (!question) return;
+            
+            addChatMessage('user', question);
+            input.value = '';
+            
+            if (app.isConnected) {
+                app.socket.emit('request_analysis', { question: question });
+            } else {
+                addChatMessage('assistant', 
+                    'Connexion WebSocket non disponible. Vérifiez la connexion au serveur.'
+                );
+            }
+        }
+
+        function askSuggestedQuestion(question) {
+            document.getElementById('chat-input').value = question;
+            sendChatMessage();
+        }
+
+        function addChatMessage(type, content, isThinking = false) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            
+            messageDiv.className = `chat-message message-${type}`;
+            if (isThinking) messageDiv.className += ' message-thinking';
+            
+            const prefix = type === 'user' ? 'Vous:' : 'Assistant IA:';
+            messageDiv.innerHTML = `<strong>${prefix}</strong> ${content}`;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        async function checkOllamaStatus() {
+            try {
+                const response = await fetch('/api/llm/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({question: 'test'})
+                });
+                
+                if (response.ok) {
+                    document.getElementById('ollama-status').innerHTML = 
+                        '<span class="text-success">✅ Mistral disponible</span>';
+                } else {
+                    throw new Error('Service indisponible');
+                }
+            } catch (error) {
+                document.getElementById('ollama-status').innerHTML = 
+                    '<span class="text-warning">⚠️ Ollama non connecté</span>';
+            }
+        }
+
+        async function updateRAG() {
+            try {
+                const response = await fetch('/api/rag/update', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addChatMessage('assistant', 'Base de connaissances RAG mise à jour avec succès !');
+                    
+                    // Update RAG stats
+                    document.getElementById('rag-items').textContent = '500+';
+                    document.getElementById('rag-types').textContent = '8';
+                } else {
+                    throw new Error(result.error);
+                }
+                
+            } catch (error) {
+                addChatMessage('assistant', `Erreur mise à jour RAG: ${error.message}`);
+            }
+        }
+
+        function switchDataTable() {
+            const tableType = document.getElementById('data-table-select').value;
+            const titleElement = document.getElementById('data-table-title');
+            const containerElement = document.getElementById('data-table-container');
+            
+            // Update title
+            const titles = {
+                buildings: 'Données des Bâtiments',
+                consumption: 'Données de Consommation',
+                weather: 'Données Météorologiques',
+                water: 'Données de Consommation d\'Eau'
+            };
+            
+            titleElement.textContent = titles[tableType];
+            
+            // Show loading
+            containerElement.innerHTML = `
+                <div class="text-center p-4">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2">Chargement des données ${tableType}...</p>
+                </div>
+            `;
+            
+            // Simulate data loading
+            setTimeout(() => {
+                renderDataTable(tableType);
+            }, 500);
+        }
+
+        function renderDataTable(tableType) {
+            const container = document.getElementById('data-table-container');
+            
+            // Sample data structure for demonstration
+            const sampleData = {
+                buildings: [
+                    {unique_id: 'B001', building_type: 'residential', surface_area_m2: 120, zone_name: 'Kuala Lumpur'},
+                    {unique_id: 'B002', building_type: 'commercial', surface_area_m2: 850, zone_name: 'Selangor'},
+                    {unique_id: 'B003', building_type: 'industrial', surface_area_m2: 2400, zone_name: 'Johor'}
+                ],
+                consumption: [
+                    {unique_id: 'B001', timestamp: '2024-01-01 00:00:00', y: 15.4, frequency: '1H'},
+                    {unique_id: 'B001', timestamp: '2024-01-01 01:00:00', y: 12.8, frequency: '1H'},
+                    {unique_id: 'B002', timestamp: '2024-01-01 00:00:00', y: 45.2, frequency: '1H'}
+                ],
+                weather: [
+                    {timestamp: '2024-01-01 00:00:00', temperature: 28.5, humidity: 75, wind_speed: 12},
+                    {timestamp: '2024-01-01 01:00:00', temperature: 27.8, humidity: 78, wind_speed: 10}
+                ],
+                water: [
+                    {unique_id: 'B001', timestamp: '2024-01-01 00:00:00', y: 125.5, frequency: '1H'},
+                    {unique_id: 'B002', timestamp: '2024-01-01 00:00:00', y: 340.2, frequency: '1H'}
+                ]
+            };
+
+            const data = sampleData[tableType] || [];
+            
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-4">
+                        <i class="bi bi-database-x fs-1 text-muted"></i>
+                        <p class="mt-2 text-muted">Aucune donnée ${tableType} disponible</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Generate table HTML
+            const columns = Object.keys(data[0]);
+            
+            let tableHTML = `
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped table-hover">
+                        <thead>
+                            <tr>
+                                ${columns.map(col => `<th>${col}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(row => `
+                                <tr>
+                                    ${columns.map(col => `<td>${row[col]}</td>`).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3 text-muted text-center">
+                    <small>Aperçu des données - ${data.length} lignes affichées</small>
+                </div>
+            `;
+            
+            container.innerHTML = tableHTML;
+        }
+
+        function exportData() {
+            const tableType = document.getElementById('data-table-select').value;
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = `/api/data/export?type=${tableType}&format=csv`;
+            link.download = `malaysia_${tableType}_data.csv`;
+            link.click();
+            
+            addChatMessage('assistant', `Export des données ${tableType} en cours...`);
+        }
+
+        // Initialize data table on load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default RAG stats
+            document.getElementById('rag-items').textContent = '0';
+            document.getElementById('rag-types').textContent = '0';
+            
+            // Load default data table
+            setTimeout(() => {
+                renderDataTable('buildings');
+            }, 2000);
+        });
+
+        // Tab change handlers
+        document.addEventListener('shown.bs.tab', function(e) {
+            const targetTab = e.target.getAttribute('href');
+            
+            if (targetTab === '#consumption') {
+                updateConsumptionCharts();
+            } else if (targetTab === '#buildings') {
+                // Refresh map when switching to buildings tab
+                if (app.map.instance) {
+                    setTimeout(() => {
+                        app.map.instance.invalidateSize();
+                        if (app.isDataLoaded) {
+                            loadMapData();
+                        }
+                    }, 100);
+                }
+            }
+        });
+
+        // ============================================================================
+        // GESTION CARTOGRAPHIQUE
+        // ============================================================================
+
+        function initializeMap() {
+            // Initialize Leaflet map
+            app.map.instance = L.map('buildings-map', {
+                center: [4.2105, 101.9758], // Centre Malaysia
+                zoom: 6,
+                zoomControl: true,
+                scrollWheelZoom: true
+            });
+
+            // Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(app.map.instance);
+
+            // Initialize marker cluster group
+            app.map.markers = L.markerClusterGroup({
+                chunkedLoading: true,
+                maxClusterRadius: 50
+            });
+
+            console.log('✅ Carte Leaflet initialisée');
+        }
+
+        async function loadMapData() {
+            try {
+                if (!app.map.instance) {
+                    console.warn('Carte non initialisée');
+                    return;
+                }
+
+                await showBuildingsMap();
+                await loadMapStatistics();
+
+            } catch (error) {
+                console.error('Erreur chargement données carte:', error);
+            }
+        }
+
+        async function showBuildingsMap() {
+            try {
+                const density = document.getElementById('map-density')?.value || 100;
+                const typeFilter = document.getElementById('map-type-filter')?.value || 'all';
+
+                const response = await fetch(`/api/map/buildings?density=${density}&type=${typeFilter}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    renderBuildingsOnMap(result.map_data);
+                    updateMapStatistics(result.map_data.statistics);
+                    updateMapLegend(result.map_data.legend);
+                } else {
+                    throw new Error(result.error);
+                }
+
+            } catch (error) {
+                console.error('Erreur affichage bâtiments:', error);
+                showMapError('Erreur chargement des bâtiments');
+            }
+        }
+
+        async function showConsumptionHeatmap() {
+            try {
+                const response = await fetch('/api/map/consumption-heatmap');
+                const result = await response.json();
+
+                if (result.success) {
+                    renderConsumptionHeatmap(result.heatmap_data);
+                } else {
+                    throw new Error(result.error);
+                }
+
+            } catch (error) {
+                console.error('Erreur heatmap consommation:', error);
+                showMapError('Erreur chargement de la heatmap');
+            }
+        }
+
+        function renderBuildingsOnMap(mapData) {
+            // Clear existing layers
+            clearMapLayers();
+
+            app.map.currentView = 'buildings';
+
+            // Add markers
+            mapData.markers.forEach(markerData => {
+                const marker = L.circleMarker([markerData.lat, markerData.lng], {
+                    radius: 6,
+                    fillColor: markerData.color,
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+
+                marker.bindPopup(markerData.popup);
+                app.map.markers.addLayer(marker);
+            });
+
+            app.map.instance.addLayer(app.map.markers);
+
+            // Adjust view
+            if (mapData.center && mapData.zoom) {
+                app.map.instance.setView(mapData.center, mapData.zoom);
+            }
+
+            console.log(`✅ ${mapData.markers.length} bâtiments affichés sur la carte`);
+        }
+
+        function renderConsumptionHeatmap(heatmapData) {
+            // Clear existing layers
+            clearMapLayers();
+
+            app.map.currentView = 'heatmap';
+
+            if (heatmapData.heatmap_points && heatmapData.heatmap_points.length > 0) {
+                // Prepare heatmap data
+                const heatPoints = heatmapData.heatmap_points.map(point => [
+                    point.lat,
+                    point.lng,
+                    point.intensity
+                ]);
+
+                // Create heat layer
+                app.map.heatLayer = L.heatLayer(heatPoints, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 17,
+                    gradient: {
+                        0.0: 'blue',
+                        0.3: 'cyan',
+                        0.5: 'lime',
+                        0.7: 'yellow',
+                        1.0: 'red'
+                    }
+                });
+
+                app.map.instance.addLayer(app.map.heatLayer);
+
+                // Adjust view
+                if (heatmapData.center) {
+                    app.map.instance.setView(heatmapData.center, heatmapData.zoom || 7);
+                }
+
+                console.log(`✅ Heatmap avec ${heatmapData.heatmap_points.length} points`);
+            }
+        }
+
+        function clearMapLayers() {
+            if (app.map.markers) {
+                app.map.markers.clearLayers();
+                app.map.instance.removeLayer(app.map.markers);
+            }
+
+            if (app.map.heatLayer) {
+                app.map.instance.removeLayer(app.map.heatLayer);
+                app.map.heatLayer = null;
+            }
+        }
+
+        function updateMapDensity(value) {
+            document.getElementById('density-display').textContent = value;
+            
+            if (app.map.currentView === 'buildings') {
+                showBuildingsMap();
+            }
+        }
+
+        function updateMapTypeFilter(value) {
+            if (app.map.currentView === 'buildings') {
+                showBuildingsMap();
+            }
+        }
+
+        function updateMapStatistics(statistics) {
+            document.getElementById('map-total-buildings').textContent = 
+                (statistics.total_buildings || 0).toLocaleString();
+            
+            document.getElementById('map-displayed').textContent = 
+                (statistics.displayed_buildings || 0).toLocaleString();
+
+            // Geographic bounds
+            const bounds = statistics.geographic_bounds || {};
+            document.getElementById('geo-north').textContent = 
+                bounds.north ? bounds.north.toFixed(3) : '-';
+            document.getElementById('geo-south').textContent = 
+                bounds.south ? bounds.south.toFixed(3) : '-';
+            document.getElementById('geo-east').textContent = 
+                bounds.east ? bounds.east.toFixed(3) : '-';
+            document.getElementById('geo-west').textContent = 
+                bounds.west ? bounds.west.toFixed(3) : '-';
+
+            // Type breakdown
+            const typeBreakdown = document.getElementById('type-breakdown');
+            typeBreakdown.innerHTML = '';
+
+            if (statistics.type_distribution) {
+                Object.entries(statistics.type_distribution).forEach(([type, data]) => {
+                    const typeItem = document.createElement('div');
+                    typeItem.className = 'd-flex justify-content-between align-items-center mb-1';
+                    typeItem.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <div class="legend-color" style="background-color: ${data.color}"></div>
+                            <small>${type}</small>
+                        </div>
+                        <small class="text-muted">${data.count} (${data.percentage}%)</small>
+                    `;
+                    typeBreakdown.appendChild(typeItem);
+                });
+            }
+        }
+
+        function updateMapLegend(legendData) {
+            const legendItems = document.getElementById('legend-items');
+            legendItems.innerHTML = '';
+
+            if (legendData && legendData.items) {
+                legendData.items.slice(0, 8).forEach(item => { // Limit to 8 items
+                    const legendItem = document.createElement('div');
+                    legendItem.className = 'legend-item';
+                    legendItem.innerHTML = `
+                        <div class="legend-color" style="background-color: ${item.color}"></div>
+                        <small>${item.label}</small>
+                    `;
+                    legendItems.appendChild(legendItem);
+                });
+            }
+        }
+
+        async function loadMapStatistics() {
+            try {
+                const response = await fetch('/api/map/statistics');
+                const result = await response.json();
+
+                if (result.success) {
+                    // Update general statistics
+                    console.log('📊 Statistiques carte:', result.statistics);
+                }
+
+                // Load zones data
+                const zonesResponse = await fetch('/api/map/zones');
+                const zonesResult = await zonesResponse.json();
+
+                if (zonesResult.success) {
+                    updateTopZones(zonesResult.zones_data.zones);
+                }
+
+            } catch (error) {
+                console.error('Erreur statistiques carte:', error);
+            }
+        }
+
+        function updateTopZones(zones) {
+            const topZonesContainer = document.getElementById('top-zones');
+            topZonesContainer.innerHTML = '';
+
+            if (zones && zones.length > 0) {
+                zones.slice(0, 5).forEach((zone, index) => {
+                    const zoneItem = document.createElement('div');
+                    zoneItem.className = 'mb-2 p-2 border rounded';
+                    zoneItem.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <strong class="small">${zone.name}</strong>
+                            <small class="text-muted">#${index + 1}</small>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small>${zone.building_count} bâtiments</small>
+                            <small>${(zone.total_surface / 1000).toFixed(0)}k m²</small>
+                        </div>
+                        <div class="mt-1">
+                            <small class="text-muted">
+                                Densité: <span class="badge badge-sm bg-${getDensityColor(zone.density_level)}">${zone.density_level}</span>
+                            </small>
+                        </div>
+                    `;
+                    topZonesContainer.appendChild(zoneItem);
+                });
+            } else {
+                topZonesContainer.innerHTML = '<small class="text-muted">Aucune zone disponible</small>';
+            }
+        }
+
+        function getDensityColor(level) {
+            const colors = {
+                'high': 'danger',
+                'medium': 'warning',
+                'low': 'info',
+                'very_low': 'secondary'
+            };
+            return colors[level] || 'secondary';
+        }
+
+        function showMapError(message) {
+            const mapContainer = document.getElementById('buildings-map');
+            mapContainer.innerHTML = `
+                <div class="d-flex align-items-center justify-content-center h-100">
+                    <div class="text-center">
+                        <i class="bi bi-exclamation-triangle fs-1 text-warning"></i>
+                        <p class="mt-2">${message}</p>
+                        <button class="btn btn-outline-light btn-sm" onclick="loadMapData()">
+                            <i class="bi bi-arrow-clockwise"></i> Réessayer
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Utility functions
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+            return num.toFixed(1);
+        }
+
+        function formatDateTime(dateString) {
+            return new Date(dateString).toLocaleString('fr-FR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Auto-refresh functionality
+        setInterval(() => {
+            if (app.isDataLoaded) {
+                document.getElementById('quick-update').textContent = 
+                    new Date().toLocaleTimeString();
+            }
+        }, 60000); // Update every minute
+
+        console.log('🎯 Dashboard Malaysia initialisé avec succès');
+    </script>
+</body>
+</html>
