@@ -51,7 +51,7 @@ class DashboardApp:
     
     def __init__(self):
         """Initialise l'application dashboard"""
-        self.app = Flask(__name__)
+        self.app = Flask(__name__, static_folder='dashboard/static', template_folder='templates')
         self.app.secret_key = 'malaysia-dashboard-key'
         self.socketio = SocketIO(self.app, cors_allowed_origins="*")
         
